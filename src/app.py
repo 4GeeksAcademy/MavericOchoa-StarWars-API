@@ -8,7 +8,8 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Character, Planets
+from models import db, User, Character, Planets, Favorites
+import requests
 #from models import Person
 
 app = Flask(__name__)
@@ -45,6 +46,119 @@ def handle_hello():
 
     return jsonify(response_body), 200
 
+#traer todos los characters
+@app.route('/character', methods=["GET"])
+def get_all_character():
+
+    character = Character()
+    character= character.query.all()
+    character = list(map(lambda item: item.serialize(), character))
+
+    return jsonify(character), 200
+
+# traer los characer por id
+@app.route('/character/<int:character_id>', methods=["GET"])
+def get_one_character(character_id):
+    character = Character()
+    character = character.query.get(character_id)
+
+    if character is None:
+        raise APIException("User not found", status_code=404)
+    else:
+        return jsonify(character.serialize())
+    
+# traer todos los usuarios
+@app.route('/users', methods=["GET"])
+def get_all_users():
+    users = User()
+    users = users.query.all()
+
+    users = list(map(lambda item: item.serialize(), users ))
+    return jsonify(users), 200
+
+# traer todos los favoritos de un usuario
+@app.route('/users/favorites/<int:theid>', methods=["GET"])
+def get_all_favorites_user(theid=None):
+    user = User()
+    user = user.query.filter_by(id=theid).first()
+
+    return jsonify(user.serialize()), 200
+
+# agregamos un character a favoritos
+@app.route("/favorite/character/<int:character_id>", methods=["POST"])
+def add_character_fav(character_id):
+    user_id = 3
+
+    fav = Favorites()
+    fav.user_id = user_id
+    fav.character_id = character_id
+
+    db.session.add(fav)
+
+    try:
+        db.session.commit()
+        return jsonify("se guardo exitosamente"), 200
+    except Exception as error:
+        db.session.rollback
+        return jsonify("error debes revisar"),401
+
+# traer todos los planets
+#@app.route('/planets/')
+
+@app.route('/character/population', methods=['GET'])
+def get_character_population():
+    response = requests.get("https://www.swapi.tech/api/people?page=1&1limit=2")
+    response = response.json()
+    response = response.get("results")
+
+    for item in response:
+        result = requests.get(item.get("url"))
+        result = result.json()
+        result = result.get("result")
+        character =Character()
+        character.name = result.get("properties").get("name")
+        character.gender = result.get("properties").get("gender")
+        character.height = result.get("properties").get("height")
+        character.hair_color = result.get("properties").get("hair_color")
+        character.birth_year = result.get("properties").get("birth_year")
+
+        try:
+            db.session.add(character)
+            db.session.commit()
+        except Exception as error:
+            print(error)
+            db.session.rollback()
+            return jsonify("error"), 500
+
+    return jsonify("populando listo"), 200
+
+@app.route('/planet/population', methods=['GET'])
+def get_planet_population():
+    response = requests.get("https://www.swapi.tech/api/planets?page=1&1limit=2")
+    response = response.json()
+    response = response.get("results")
+
+    for item in response:
+        result = requests.get(item.get("url"))
+        result = result.json()
+        result = result.get("result")
+        planets =Planets()
+        planets.name = result.get("properties").get("name")
+        planets.diameter = result.get("properties").get("diameter")
+        planets.rotation_period = result.get("properties").get("rotatio period")
+        planets.gravity = result.get("properties").get("gravity")
+        planets.population = result.get("properties").get("population")
+        planets.terrain = result.get("properties").get("terrain")
+
+        try:
+            db.session.add(planets)
+            db.session.commit()
+        except Exception as error:
+            print(error)
+            db.session.rollback()
+            return jsonify("error"), 500
+
+    return jsonify("populando listo"), 200
 
 
 # this only runs if `$ python src/app.py` is executed
