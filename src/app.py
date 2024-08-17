@@ -67,6 +67,29 @@ def get_one_character(character_id):
     else:
         return jsonify(character.serialize())
     
+#traer todos los planetas
+@app.route('/planets', methods=["GET"])
+def get_all_planets():
+
+    planets = Planets()
+    planets = planets.query.all()
+    planets = list(map(lambda item: item.serialize(), planets))
+
+    print(planets)
+    return jsonify(planets), 200
+
+#traer los planetas por id
+@app.route('/planets/<int:planet_id>', methods=["GET"])
+def get_one_planet(planet_id):
+
+    planet = Planets()
+    planet = planet.query.get(planet_id)
+
+    if planet is None:
+        raise APIException("Planet not found", status_code=404)
+    else:
+        return jsonify(planet.serialize())
+
 # traer todos los usuarios
 @app.route('/users', methods=["GET"])
 def get_all_users():
@@ -102,6 +125,56 @@ def add_character_fav(character_id):
         db.session.rollback
         return jsonify("error debes revisar"),401
 
+# agregamos un planeta a favoritos
+@app.route("/favorite/planet/<int:planet_id>", methods=["POST"])
+def add_planet_fav(planet_id):
+    user_id = 3
+    fav = Favorites()
+    fav.user_id = user_id
+    fav.planets_id = planet_id
+
+    db.session.add(fav)
+
+    try:
+        db.session.commit()
+        return jsonify("Se guardo exitosamente"), 200
+    except Exception as erro:
+        db.session.rollback
+        return jsonify("Error deves revisar"),201
+        
+@app.route("/favorite/character/<int:character_id>", methods=["DELETE"])
+def delete_characte_fav(character_id):
+    user_id = 3  # Assume we are dealing with user ID 3
+    fav = Favorites.query.filter_by(user_id=user_id, character_id=character_id).first()
+
+    if not fav:
+        return jsonify("Favorite planet not found"), 404
+
+    try:
+        db.session.delete(fav)
+        db.session.commit()
+        return jsonify("Favorite planet deleted successfully"), 200
+    except Exception as error:
+        db.session.rollback()
+        return jsonify("Error occurred, could not delete"), 500
+
+@app.route("/favorite/planet/<int:planet_id>", methods=["DELETE"])
+def delete_planet_fav(planet_id):
+    user_id = 3  # Assume we are dealing with user ID 3
+    fav = Favorites.query.filter_by(user_id=user_id, planets_id=planet_id).first()
+
+    if not fav:
+        return jsonify("Favorite planet not found"), 404
+
+    try:
+        db.session.delete(fav)
+        db.session.commit()
+        return jsonify("Favorite planet deleted successfully"), 200
+    except Exception as error:
+        db.session.rollback()
+        return jsonify("Error occurred, could not delete"), 500
+  
+    
 # traer todos los planets
 #@app.route('/planets/')
 
